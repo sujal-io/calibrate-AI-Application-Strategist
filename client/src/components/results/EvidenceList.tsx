@@ -63,7 +63,9 @@ const EvidenceList = ({
         },
       }));
 
-      const token = await getToken();
+      // A user can spend several minutes reading the report before rewriting
+      // a bullet, so do not reuse Clerk's cached short-lived session token.
+      const token = await getToken({ skipCache: true });
 
       if (!token) {
         const msg = "Please sign in to rewrite.";

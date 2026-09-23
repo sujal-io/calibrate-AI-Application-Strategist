@@ -96,21 +96,14 @@ const Workspace = () => {
         return;
       }
 
-      // Seniority assessment only needs the uploaded resume, while job analysis
-      // uses the job description. Run them concurrently to avoid making the
-      // user wait for two independent Gemini workflows in sequence.
-      const calibrationPromise = calibrateResume(await getFreshToken());
-
       let analysis;
       try {
-        setLoadingMessage("Analyzing the role and assessing your seniority...");
+        setLoadingMessage("Analyzing the job description...");
         analysis = await analyzeJobDescription(
           jobDescription,
           await getFreshToken(),
         );
       } catch (error) {
-        // Ensure a rejected concurrent request is observed before exiting.
-        await calibrationPromise.catch(() => undefined);
         show({
           message: getRequestErrorMessage(
             error,
@@ -129,7 +122,11 @@ const Workspace = () => {
 
       let calibration;
       try {
-        calibration = await calibrationPromise;
+        // Gemini's lower production quotas can reject simultaneous structured
+        // generation calls. Keep this step sequential with job analysis while
+        // retaining the batched embeddings and removed duplicate retrieval.
+        setLoadingMessage("Assessing your seniority...");
+        calibration = await calibrateResume(await getFreshToken());
       } catch (error) {
         if (
           axios.isAxiosError(error) &&

@@ -11,6 +11,10 @@ import cors from "cors";
 const app = express();
 const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
+// Render terminates TLS at a proxy. Trust exactly that proxy so rate limiting
+// uses the visitor's forwarded IP instead of treating every user as one IP.
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: clientUrl,
