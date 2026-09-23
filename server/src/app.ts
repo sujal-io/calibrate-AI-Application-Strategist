@@ -9,10 +9,11 @@ import cors from "cors";
 
 
 const app = express();
+const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: clientUrl,
     credentials: true,
   })
 );
@@ -22,7 +23,9 @@ app.use(express.json());
 app.use(
   clerkMiddleware({
     jwtKey: process.env.CLERK_JWT_KEY,
-    authorizedParties: ["http://localhost:5173"],
+    // Clerk validates the token's authorized-party claim. Use the configured
+    // frontend origin so this works in both local development and production.
+    authorizedParties: [clientUrl],
   }),
 );
 
