@@ -3,10 +3,10 @@ import { gemini } from "../config/gemini.js";
 
 const RETRY_INSTRUCTION =
   "\n\nYour previous response was invalid JSON. Return ONLY valid JSON matching the schema, with no extra text.";
-const RATE_LIMIT_RETRY_DELAY_MS = 3_000;
-const MAX_RATE_LIMIT_ATTEMPTS = 3;
+const TRANSIENT_RETRY_DELAY_MS = 2_000;
+const MAX_TRANSIENT_ATTEMPTS = 5;
 
-const isRateLimitError = (error: unknown) => {
+const isTransientGeminiError = (error: unknown) => {
   if (typeof error !== "object" || error === null) {
     return false;
   }
@@ -70,7 +70,7 @@ const generateContentWithRateLimitRetry = async (
   prompt: string,
   responseJsonSchema: unknown
 ) => {
-  for (let attempt = 0; attempt < MAX_RATE_LIMIT_ATTEMPTS; attempt += 1) {
+  for (let attempt = 0; attempt < MAX_TRANSIENT_ATTEMPTS; attempt += 1) {
     try {
       return await gemini.models.generateContent({
         model: process.env.GEMINI_MODEL!,
@@ -81,15 +81,18 @@ const generateContentWithRateLimitRetry = async (
         },
       });
     } catch (error) {
-      if (!isRateLimitError(error) || attempt === MAX_RATE_LIMIT_ATTEMPTS - 1) {
+      if (
+        !isTransientGeminiError(error) ||
+        attempt === MAX_TRANSIENT_ATTEMPTS - 1
+      ) {
         throw error;
       }
 
-      await wait(RATE_LIMIT_RETRY_DELAY_MS * 2 ** attempt);
+      await wait(TRANSIENT_RETRY_DELAY_MS * 2 ** attempt);
     }
   }
 
-  throw new Error("Unreachable rate-limit retry state");
+  throw new Error("Unreachable Gemini retry state");
 };
 
 export const generateStructuredResponse = async <T>(

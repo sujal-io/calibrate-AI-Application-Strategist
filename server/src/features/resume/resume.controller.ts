@@ -42,6 +42,20 @@ export const uploadResume = async (
   } catch (error) {
     console.error(error);
 
+    const status =
+      typeof error === "object" && error !== null && "status" in error
+        ? error.status
+        : undefined;
+
+    if (status === 429 || status === 503) {
+      res.status(status).json({
+        success: false,
+        message:
+          "The AI service is temporarily busy. Please wait a moment and try again.",
+      });
+      return;
+    }
+
     res.status(500).json({
       success: false,
       message: "Upload failed.",
