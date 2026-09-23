@@ -13,7 +13,11 @@ const isRateLimitError = (error: unknown) => {
   const status = "status" in error ? error.status : undefined;
   const message = error instanceof Error ? error.message : "";
 
-  return status === 429 || /\b429\b/.test(message);
+ return (
+  status === 429 ||
+  status === 503 ||
+  /\b(429|503)\b/.test(message)
+);
 };
 
 const wait = (milliseconds: number) =>

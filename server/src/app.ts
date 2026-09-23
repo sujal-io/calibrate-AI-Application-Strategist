@@ -19,7 +19,12 @@ app.use(
 
 app.use(express.json());
 
-app.use(clerkMiddleware());
+app.use(
+  clerkMiddleware({
+    jwtKey: process.env.CLERK_JWT_KEY,
+    authorizedParties: ["http://localhost:5173"],
+  }),
+);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/resume", resumeRoutes);

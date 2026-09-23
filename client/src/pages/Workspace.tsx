@@ -9,7 +9,6 @@ import axios from "axios";
 import {
   uploadResume,
   analyzeJobDescription,
-  retrieveContext,
   calibrateResume,
 } from "../services/calibration";
 import {
@@ -25,6 +24,7 @@ const Workspace = () => {
   const [resume, setResume] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Calibrating...");
   const isLoadingRef = useRef(false);
 
   const hasSavedCalibration =
@@ -40,6 +40,17 @@ const Workspace = () => {
 
   const canCalibrate =
     !isLoading && resume !== null && jobDescription.trim().length > 0;
+
+  const getRequestErrorMessage = (error: unknown, fallback: string) => {
+    if (axios.isAxiosError(error)) {
+      const message = error.response?.data?.message;
+      if (typeof message === "string" && message.trim()) {
+        return message;
+      }
+    }
+
+    return fallback;
+  };
 
   const handleCalibrate = async () => {
     if (!resume) return;
@@ -57,52 +68,68 @@ const Workspace = () => {
     try {
       isLoadingRef.current = true;
       setIsLoading(true);
+      setLoadingMessage("Reading and indexing your resume...");
 
-      const token = await getToken();
+      const getFreshToken = async () => {
+        // Resume processing can take long enough for Clerk's short-lived
+        // session token to expire. Get a new one immediately before each API
+        // request instead of reusing the token acquired before the upload.
+        const token = await getToken({ skipCache: true });
 
-      if (!token) {
-        show({
-          message: "Please sign in to continue.",
-          type: "warning",
-        });
-        return;
-      }
+        if (!token) {
+          throw new Error("Missing Clerk session token");
+        }
+
+        return token;
+      };
 
       try {
-        await uploadResume(resume, token);
-      } catch {
+        await uploadResume(resume, await getFreshToken());
+      } catch (error) {
         show({
-          message: "Couldn't upload your resume. Please try again.",
+          message: getRequestErrorMessage(
+            error,
+            "Couldn't upload your resume. Please try again.",
+          ),
           type: "error",
         });
         return;
       }
+
+      // Seniority assessment only needs the uploaded resume, while job analysis
+      // uses the job description. Run them concurrently to avoid making the
+      // user wait for two independent Gemini workflows in sequence.
+      const calibrationPromise = calibrateResume(await getFreshToken());
 
       let analysis;
       try {
-        analysis = await analyzeJobDescription(jobDescription, token);
-      } catch {
+        setLoadingMessage("Analyzing the role and assessing your seniority...");
+        analysis = await analyzeJobDescription(
+          jobDescription,
+          await getFreshToken(),
+        );
+      } catch (error) {
+        // Ensure a rejected concurrent request is observed before exiting.
+        await calibrationPromise.catch(() => undefined);
         show({
-          message: "Couldn't analyze that job description. Please try again.",
+          message: getRequestErrorMessage(
+            error,
+            "Couldn't analyze that job description. Please try again.",
+          ),
           type: "error",
         });
         return;
       }
 
-      let context;
-      try {
-        context = await retrieveContext(jobDescription, token);
-      } catch {
-        show({
-          message: "Couldn't match your resume. Please try again.",
-          type: "error",
-        });
-        return;
-      }
+      // Job analysis already retrieves the evidence needed by the result view.
+      // Reusing it removes a duplicate embedding request and API round trip.
+      const context = {
+        retrievedBullets: analysis.data.retrievedBullets,
+      };
 
       let calibration;
       try {
-        calibration = await calibrateResume(token);
+        calibration = await calibrationPromise;
       } catch (error) {
         if (
           axios.isAxiosError(error) &&
@@ -225,7 +252,7 @@ const Workspace = () => {
                     className="animate-spin"
                     aria-hidden="true"
                   />
-                  Calibrating...
+                  {loadingMessage}
                 </>
               ) : (
                 <>

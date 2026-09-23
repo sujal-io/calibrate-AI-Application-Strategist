@@ -30,7 +30,9 @@ export const analyzeJobDescriptionController = async (
       data: result,
     });
   } catch (error) {
-  console.error(error);
+  const errorMessage =
+    error instanceof Error ? error.message : "Unknown job analysis error.";
+  console.error("Job description analysis failed:", error);
 
   // Zod validation error
   if (error instanceof ZodError) {
@@ -64,7 +66,10 @@ export const analyzeJobDescriptionController = async (
   // Unexpected errors
   return res.status(500).json({
     success: false,
-    message: "Internal server error.",
+    message:
+      process.env.NODE_ENV === "production"
+        ? "Job description analysis failed. Please try again."
+        : `Job description analysis failed: ${errorMessage}`,
   });
 }
 };

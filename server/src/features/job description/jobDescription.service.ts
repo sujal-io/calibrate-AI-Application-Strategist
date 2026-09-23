@@ -56,5 +56,6 @@ const retrievedBullets = await retrieveRelevantBullets(
     structuredJobDescription,
     matchResult,
     recommendations,
+    retrievedBullets,
   };
 };

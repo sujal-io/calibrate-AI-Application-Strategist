@@ -2,7 +2,7 @@ import pdfParse from "pdf-parse";
 import { Resume } from "./resume.model.js";
 import { extractStructuredResume } from "../extraction/extraction.service.js";
 import { buildBulletDocuments } from "../leveling/services/bulletBuilder.service.js";
-import { generateEmbedding } from "../embeddings/services/embedding.service.js";
+import { generateEmbeddings } from "../embeddings/services/embedding.service.js";
 import { ResumeBullet } from "../leveling/schemas/bullet.schema.js";
 import { retrieveRelevantBullets } from "../retrieval/retrieval.service.js";
 
@@ -24,12 +24,14 @@ export const processResume = async (
 
   const bullets = buildBulletDocuments(structuredData);
 
-  const bulletsWithEmbeddings = await Promise.all(
-    bullets.map(async (bullet) => ({
-      ...bullet,
-      embedding: await generateEmbedding(bullet.text),
-    })),
+  const embeddings = await generateEmbeddings(
+    bullets.map((bullet) => bullet.text),
   );
+
+  const bulletsWithEmbeddings = bullets.map((bullet, index) => ({
+    ...bullet,
+    embedding: embeddings[index],
+  }));
 
   // Save everything to MongoDB
   return await saveResume(
