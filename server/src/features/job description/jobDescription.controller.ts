@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getAuth } from "@clerk/express";
+import { getUserId } from "../../middleware/auth.middleware.js";
 import { ZodError } from "zod";
 import { AnalyzeJobDescriptionSchema } from "./jobDescription.validation.js";
 import { analyzeJobDescription } from "./jobDescription.service.js";
@@ -13,8 +13,7 @@ export const analyzeJobDescriptionController = async (
     const { jobDescription } = AnalyzeJobDescriptionSchema.parse(req.body);
 
     // Get authenticated user's Clerk ID
-    const { userId } = getAuth(req);
-
+    const userId = getUserId(req);
     if (!userId) {
       return res.status(401).json({
         success: false,

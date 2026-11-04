@@ -11,8 +11,7 @@ import cors from "cors";
 const app = express();
 const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
-// Render terminates TLS at a proxy. Trust exactly that proxy so rate limiting
-// uses the visitor's forwarded IP instead of treating every user as one IP.
+// Render terminates TLS at a proxy.
 app.set("trust proxy", 1);
 
 app.use(
@@ -27,8 +26,7 @@ app.use(express.json());
 app.use(
   clerkMiddleware({
     jwtKey: process.env.CLERK_JWT_KEY,
-    // Clerk validates the token's authorized-party claim. Use the configured
-    // frontend origin so this works in both local development and production.
+    // Clerk validates the token's authorized-party claim.
     authorizedParties: [clientUrl],
   }),
 );
