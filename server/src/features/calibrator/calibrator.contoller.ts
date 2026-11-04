@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
-import { getAuth } from "@clerk/express";
-import { Resume } from "../resume/resume.model.js";
+import { getUserId } from "../../middleware/auth.middleware.js";import { Resume } from "../resume/resume.model.js";
 import {
   calibrateSeniority,
   createSeniorityComparison,
@@ -9,7 +8,7 @@ import {
 
 export const calibrate = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { userId: clerkId } = getAuth(req);
+    const clerkId = getUserId(req);
 
     if (!clerkId) {
       res.status(401).json({
@@ -42,7 +41,7 @@ export const calibrate = async (req: Request, res: Response): Promise<void> => {
         : "No formal work experience listed");
 
     const bullets = resume.bullets
-      .map((bullet) => bullet.text)
+      .map((bullet) => bullet.text)   
       .filter(
         (text): text is string =>
           typeof text === "string" && text.trim().length > 0,

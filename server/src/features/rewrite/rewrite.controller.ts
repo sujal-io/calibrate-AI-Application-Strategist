@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
-import { getAuth } from "@clerk/express";
+import { getUserId } from "../../middleware/auth.middleware.js";
 
 import { Resume } from "../resume/resume.model.js";
 import { rewriteBullet } from "./rewrite.service.js";
 
 export const rewriteBulletController = async (req: Request, res: Response) => {
   try {
-    const { userId: clerkId } = getAuth(req);
+    const clerkId = getUserId(req);
 
     if (!clerkId) {
       return res.status(401).json({
